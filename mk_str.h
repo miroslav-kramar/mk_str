@@ -254,4 +254,18 @@ MKSTRDEF void mk_str_println(mk_str_view_t view) {
     mk_str_println_stream(view, stdout);
 }
 
+void mk_str_to_memory(mk_str_view_t view, void * memory, size_t memory_size) {
+    for (size_t i = 0; i < view.length && i < memory_size; i++) {
+        ((char *)memory)[i] = view.data[i];
+    }
+}
+
+void mk_str_to_cstr(mk_str_view_t view, char * cstr, size_t cstr_size) {
+    size_t i;
+    for (i = 0; i < view.length && i < cstr_size - 1; i++) {
+        cstr[i] = view.data[i];
+    }
+    cstr[i] = '\0';
+}
+
 #endif // MK_STR_H
