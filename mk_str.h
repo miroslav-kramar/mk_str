@@ -5,26 +5,80 @@
 
 #define MKSTRDEF static inline
 
-typedef struct {
+// -----------------------------------------------------------------------------
+// API
+// -----------------------------------------------------------------------------
+
+typedef struct mk_str_arena_t mk_str_arena_t;
+typedef struct mk_str_t mk_str_t;
+typedef struct mk_str_view_t mk_str_view_t;
+typedef struct mk_str_tokenizer_t mk_str_tokenizer_t;
+
+MKSTRDEF mk_str_arena_t mk_str_arena(void * memory, size_t size);
+MKSTRDEF void mk_str_arena_parse(mk_str_arena_t * arena);
+MKSTRDEF void mk_str_arena_print_info(mk_str_arena_t arena);
+MKSTRDEF void mk_str_arena_dump_chars(mk_str_arena_t arena);
+MKSTRDEF void mk_str_arena_dump_bytes(mk_str_arena_t arena);
+
+MKSTRDEF mk_str_view_t mk_str_view(mk_str_t string);
+MKSTRDEF mk_str_view_t mk_str_view_cstr(const char * cstr);
+MKSTRDEF bool mk_str_view_is_valid(mk_str_view_t view);
+
+MKSTRDEF mk_str_t mk_str(mk_str_arena_t * arena, const char * cstr);
+MKSTRDEF mk_str_t mk_str_empty(mk_str_arena_t * arena, size_t length);
+MKSTRDEF mk_str_t mk_str_invalid();
+
+MKSTRDEF bool mk_str_is_valid(mk_str_t string);
+MKSTRDEF bool mk_str_contains(mk_str_view_t haystack, mk_str_view_t needle);
+MKSTRDEF bool mk_str_contains_char(mk_str_view_t haystack, char needle);
+MKSTRDEF bool mk_str_equals(mk_str_view_t a, mk_str_view_t b);
+
+MKSTRDEF mk_str_t mk_str_concat(mk_str_arena_t * arena, mk_str_view_t a, mk_str_view_t b);
+MKSTRDEF mk_str_t mk_str_copy(mk_str_arena_t * arena, mk_str_view_t view);
+
+MKSTRDEF void mk_str_to_memory(mk_str_view_t view, void * memory, size_t memory_size);
+MKSTRDEF void mk_str_to_cstr(mk_str_view_t view, char * cstr, size_t cstr_size);
+
+MKSTRDEF mk_str_tokenizer_t mk_str_tokenizer(mk_str_view_t delimiters);
+MKSTRDEF mk_str_view_t mk_str_tokenizer_get_next(mk_str_tokenizer_t * tokenizer, mk_str_view_t view);
+MKSTRDEF void mk_str_tokenizer_reset(mk_str_tokenizer_t * tokenizer);
+
+MKSTRDEF void mk_str_print_stream(mk_str_view_t view, FILE * stream);
+MKSTRDEF void mk_str_println_stream(mk_str_view_t view, FILE * stream);
+MKSTRDEF void mk_str_print(mk_str_view_t view);
+MKSTRDEF void mk_str_println(mk_str_view_t view);
+
+// -----------------------------------------------------------------------------
+// IMPLEMENTATION
+// -----------------------------------------------------------------------------
+
+struct mk_str_arena_t {
     char * data;
     size_t capacity;
     size_t length;
-} mk_str_arena_t;
+};
 
-typedef struct {
+struct mk_str_t {
     char * data;
     size_t length;
-} mk_str_t;
+};
 
-typedef struct {
+struct mk_str_view_t {
     const char * data;
     size_t length;
-} mk_str_view_t;
+};
 
-typedef struct {
+struct mk_str_tokenizer_t {
     mk_str_view_t delimiters;
     size_t next_offset;
-} mk_str_tokenizer_t;
+};
+
+#define mk_str_foreach_token(iterator, tokenizer_ptr, view_to_parse)\
+for (\
+    mk_str_view_t iterator = mk_str_tokenizer_get_next(tokenizer_ptr, view_to_parse);\
+    mk_str_view_is_valid(iterator);\
+    iterator = mk_str_tokenizer_get_next(tokenizer_ptr, view_to_parse)\
+)
 
 MKSTRDEF mk_str_arena_t mk_str_arena(void * memory, size_t size) {
     return (mk_str_arena_t){
@@ -169,7 +223,7 @@ MKSTRDEF bool mk_str_contains_char(mk_str_view_t haystack, char needle) {
     return false;
 }
 
-MKSTRDEF bool mk_str_equal(mk_str_view_t a, mk_str_view_t b) {
+MKSTRDEF bool mk_str_equals(mk_str_view_t a, mk_str_view_t b) {
     if (a.length != b.length) {
         return false;
     }
@@ -224,13 +278,6 @@ MKSTRDEF void mk_str_tokenizer_reset(mk_str_tokenizer_t * tokenizer) {
     tokenizer->next_offset = 0;
 }
 
-#define mk_str_foreach_token(iterator, tokenizer_ptr, view_to_parse)\
-for (\
-    mk_str_view_t iterator = mk_str_tokenizer_get_next(tokenizer_ptr, view_to_parse);\
-    mk_str_view_is_valid(iterator);\
-    iterator = mk_str_tokenizer_get_next(tokenizer_ptr, view_to_parse)\
-)
-
 MKSTRDEF void mk_str_print_stream(mk_str_view_t view, FILE * stream) {
     if (!mk_str_view_is_valid(view)) {
         return;
@@ -254,13 +301,13 @@ MKSTRDEF void mk_str_println(mk_str_view_t view) {
     mk_str_println_stream(view, stdout);
 }
 
-void mk_str_to_memory(mk_str_view_t view, void * memory, size_t memory_size) {
+MKSTRDEF void mk_str_to_memory(mk_str_view_t view, void * memory, size_t memory_size) {
     for (size_t i = 0; i < view.length && i < memory_size; i++) {
         ((char *)memory)[i] = view.data[i];
     }
 }
 
-void mk_str_to_cstr(mk_str_view_t view, char * cstr, size_t cstr_size) {
+MKSTRDEF void mk_str_to_cstr(mk_str_view_t view, char * cstr, size_t cstr_size) {
     size_t i;
     for (i = 0; i < view.length && i < cstr_size - 1; i++) {
         cstr[i] = view.data[i];
